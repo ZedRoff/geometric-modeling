@@ -13,7 +13,6 @@
 #include <iostream>
 #include <string>
 
-
 void menu(int item);
 GLuint initshaders(GLenum type, const char *filename);
 GLuint initprogram(GLuint, GLuint);
@@ -44,7 +43,8 @@ vector<GLuint> buffers(NUM_BUFFERS, 0);
 vector<GLuint> vaos(NUM_BUFFERS, 0);
 unsigned int num_triangles;
 
-enum {
+enum
+{
   BUFFER_VERTICES = 0,
   BUFFER_NORMALS_PERFACE,
   BUFFER_NORMALS_PERVERTEX,
@@ -53,7 +53,8 @@ enum {
   BUFFER_INDICES_EDGES,
   BUFFER_INDICES_VERTICES
 };
-enum {
+enum
+{
   VAO_TRIANGLES_NORMSPERVERTEX = 0,
   VAO_TRIANGLES_NORMSPERFACE,
   VAO_EDGES,
@@ -69,7 +70,8 @@ bool drawmeshvertices = false;
 bool drawsilhouette = false;
 bool drawnormals = false;
 
-void makeBuffers(myMesh *input_mesh) {
+void makeBuffers(myMesh *input_mesh)
+{
   vector<GLfloat> verts;
   verts.clear();
   vector<GLfloat> norms_per_face;
@@ -81,9 +83,11 @@ void makeBuffers(myMesh *input_mesh) {
 
   num_triangles = 0;
   unsigned int index = 0;
-  for (unsigned int i = 0; i < input_mesh->faces.size(); i++) {
+  for (unsigned int i = 0; i < input_mesh->faces.size(); i++)
+  {
     myHalfedge *e = input_mesh->faces[i]->adjacent_halfedge->next;
-    do {
+    do
+    {
       verts.push_back(
           (GLfloat)input_mesh->faces[i]->adjacent_halfedge->source->point->X);
       verts.push_back(
@@ -137,7 +141,8 @@ void makeBuffers(myMesh *input_mesh) {
     } while (e->next != input_mesh->faces[i]->adjacent_halfedge);
   }
 
-  for (unsigned int i = 0; i < input_mesh->vertices.size(); i++) {
+  for (unsigned int i = 0; i < input_mesh->vertices.size(); i++)
+  {
     verts_and_normals.push_back((GLfloat)input_mesh->vertices[i]->point->X);
     verts_and_normals.push_back((GLfloat)input_mesh->vertices[i]->point->Y);
     verts_and_normals.push_back((GLfloat)input_mesh->vertices[i]->point->Z);
@@ -154,7 +159,8 @@ void makeBuffers(myMesh *input_mesh) {
   }
 
   vector<GLuint> indices_edges;
-  for (unsigned int i = 0; i < input_mesh->halfedges.size(); i++) {
+  for (unsigned int i = 0; i < input_mesh->halfedges.size(); i++)
+  {
     if (input_mesh->halfedges[i] == NULL ||
         input_mesh->halfedges[i]->next->next == NULL)
       continue;
@@ -247,7 +253,8 @@ void makeBuffers(myMesh *input_mesh) {
 }
 
 void draw_text(GLfloat x, GLfloat y, GLfloat z, string text,
-               vector<GLfloat> color) {
+               vector<GLfloat> color)
+{
   glUseProgram(0);
 
   GLfloat w = 1;
@@ -277,7 +284,8 @@ void draw_text(GLfloat x, GLfloat y, GLfloat z, string text,
   glPopAttrib();
 
 #ifdef __APPLE__
-  for (const char *c = text.c_str(); *c != '\0'; c++) {
+  for (const char *c = text.c_str(); *c != '\0'; c++)
+  {
     glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *c);
   }
 #else
@@ -287,9 +295,11 @@ void draw_text(GLfloat x, GLfloat y, GLfloat z, string text,
   glUseProgram(shaderprogram);
 }
 
-bool PickedPoint(int x, int y) {
+bool PickedPoint(int x, int y)
+{
   // Check position
-  if ((x < 0) || (Glut_w <= x) || (y < 0) || (Glut_h <= y)) {
+  if ((x < 0) || (Glut_w <= x) || (y < 0) || (Glut_h <= y))
+  {
     printf("Pick (%d,%d) outside viewport: (0,%d) (0,%d)\n", x, y, Glut_w,
            Glut_h);
     return false;
@@ -332,7 +342,8 @@ bool PickedPoint(int x, int y) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   int i = 0;
   for (vector<myFace *>::iterator it = m->faces.begin(); it != m->faces.end();
-       it++) {
+       it++)
+  {
     glLoadName(++i);
     glBegin(GL_POLYGON);
     myHalfedge *e = (*it)->adjacent_halfedge;
@@ -359,12 +370,15 @@ bool PickedPoint(int x, int y) {
   GLuint hit_z = 0xFFFFFFFF;
   GLuint *bufp = select_buffer;
   GLuint numnames, z1, z2;
-  for (int i = 0; i < select_buffer_hits; i++) {
+  for (int i = 0; i < select_buffer_hits; i++)
+  {
     numnames = *bufp++;
     z1 = *bufp++;
     z2 = *bufp++;
-    while (numnames--) {
-      if (z1 < hit_z) {
+    while (numnames--)
+    {
+      if (z1 < hit_z)
+      {
         hit = (int)*bufp;
         hit_z = z1 / 2 + z2 / 2;
       }
@@ -373,7 +387,8 @@ bool PickedPoint(int x, int y) {
   }
 
   // Return closest face
-  if ((hit > 0)) {
+  if ((hit > 0))
+  {
     // Find face
     // if (pick_face) {
     // Subtract one because added one in glLoadName
@@ -382,7 +397,8 @@ bool PickedPoint(int x, int y) {
     // }
 
     // Find hit position
-    if (pickedpoint) {
+    if (pickedpoint)
+    {
       GLdouble p[3];
       GLdouble modelview_matrix[16];
       GLdouble projection_matrix[16];
@@ -401,7 +417,9 @@ bool PickedPoint(int x, int y) {
     // Return hit
     // cout << "true\n";
     return true;
-  } else {
+  }
+  else
+  {
     // Return no hit
     // cout << "false\n";
     return false;
@@ -409,7 +427,8 @@ bool PickedPoint(int x, int y) {
 }
 
 // This function is called when a mouse button is pressed.
-void mouse(int button, int state, int x, int y) {
+void mouse(int button, int state, int x, int y)
+{
   // Remember button state
   button_pressed = (state == GLUT_DOWN) ? 1 : 0;
 
@@ -419,9 +438,12 @@ void mouse(int button, int state, int x, int y) {
 
   int mode = glutGetModifiers();
   // Process mouse button event
-  if (state == GLUT_DOWN) {
-    if (button == GLUT_LEFT_BUTTON) {
-      if (mode == GLUT_ACTIVE_CTRL) {
+  if (state == GLUT_DOWN)
+  {
+    if (button == GLUT_LEFT_BUTTON)
+    {
+      if (mode == GLUT_ACTIVE_CTRL)
+      {
         glUseProgram(0);
         pickedpoint = new myPoint3D();
         if (!PickedPoint(x, Glut_h - y))
@@ -429,21 +451,28 @@ void mouse(int button, int state, int x, int y) {
         glUseProgram(shaderprogram);
         menu(MENU_SELECTVERTEX);
       }
-      if (mode == GLUT_ACTIVE_SHIFT) {
+      if (mode == GLUT_ACTIVE_SHIFT)
+      {
       }
-    } else if (button == GLUT_MIDDLE_BUTTON) {
-    } else if (button == GLUT_RIGHT_BUTTON) {
+    }
+    else if (button == GLUT_MIDDLE_BUTTON)
+    {
+    }
+    else if (button == GLUT_RIGHT_BUTTON)
+    {
     }
   }
 
-  if (state == GLUT_UP) {
+  if (state == GLUT_UP)
+  {
   }
 
   glutPostRedisplay();
 }
 
 // This function is called when the mouse is dragged.
-void mousedrag(int x, int y) {
+void mousedrag(int x, int y)
+{
   // Invert y coordinate
   y = Glut_h - y;
 
@@ -481,7 +510,8 @@ void mousedrag(int x, int y) {
   glutPostRedisplay();
 }
 
-void mouseWheel(int button, int dir, int x, int y) {
+void mouseWheel(int button, int dir, int x, int y)
+{
   if (dir > 0)
     camera_eye += camera_forward * 0.02;
   else
@@ -490,8 +520,10 @@ void mouseWheel(int button, int dir, int x, int y) {
 }
 
 // This function is called when an arrow key is pressed.
-void keyboard2(int key, int x, int y) {
-  switch (key) {
+void keyboard2(int key, int x, int y)
+{
+  switch (key)
+  {
   case GLUT_KEY_UP:
     camera_eye += camera_forward * 0.01;
     break;
@@ -512,12 +544,14 @@ void keyboard2(int key, int x, int y) {
   glutPostRedisplay();
 }
 
-void timerFunc(int lastTime) {
+void timerFunc(int lastTime)
+{
   frame++;
   int time = glutGet(GLUT_ELAPSED_TIME);
 
   int diffTime = time - timebase;
-  if (diffTime > 200) {
+  if (diffTime > 200)
+  {
     fps = frame * 1000.0f / diffTime;
     timebase = time;
     frame = 0;
@@ -526,7 +560,8 @@ void timerFunc(int lastTime) {
   glutTimerFunc((1000 + lastTime - time) / 60, timerFunc, time);
 }
 
-void reshape(int width, int height) {
+void reshape(int width, int height)
+{
   Glut_w = width;
   Glut_h = height;
 
@@ -534,8 +569,10 @@ void reshape(int width, int height) {
 }
 
 // This function is called when a key is pressed.
-void keyboard(unsigned char key, int x, int y) {
-  switch (key) {
+void keyboard(unsigned char key, int x, int y)
+{
+  switch (key)
+  {
   case 27: // Escape to quit
     m->clear();
     glDeleteBuffers(10, &buffers[0]);
@@ -551,7 +588,8 @@ void keyboard(unsigned char key, int x, int y) {
   glutPostRedisplay();
 }
 
-void initInterface(int argc, char *argv[]) {
+void initInterface(int argc, char *argv[])
+{
   glutInit(&argc, argv);
 #ifdef __APPLE__
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_3_2_CORE_PROFILE);
@@ -638,44 +676,54 @@ void initInterface(int argc, char *argv[]) {
 // initshaders initiates a vertex or fragment shader
 // initprogram initiates a program with vertex and fragment shaders
 
-string textFileRead(const char *filename) {
+string textFileRead(const char *filename)
+{
   string str, ret = "";
   ifstream in;
   in.open(filename);
-  if (in.is_open()) {
+  if (in.is_open())
+  {
     getline(in, str);
-    while (in) {
+    while (in)
+    {
       ret += str + "\n";
       getline(in, str);
     }
     //    cout << "Shader below\n" << ret << "\n" ;
     return ret;
-  } else {
+  }
+  else
+  {
     cerr << "Unable to Open File " << filename << "\n";
     throw 2;
   }
 }
 
-void programerrors(const GLint program) {
+void programerrors(const GLint program)
+{
   GLint length;
   GLchar *log;
   glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
   log = new GLchar[length + 1];
   glGetProgramInfoLog(program, length, &length, log);
-  cout << "Compile Error, Log Below\n" << log << "\n";
+  cout << "Compile Error, Log Below\n"
+       << log << "\n";
   delete[] log;
 }
-void shadererrors(const GLint shader) {
+void shadererrors(const GLint shader)
+{
   GLint length;
   GLchar *log;
   glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
   log = new GLchar[length + 1];
   glGetShaderInfoLog(shader, length, &length, log);
-  cout << "Compile Error, Log Below\n" << log << "\n";
+  cout << "Compile Error, Log Below\n"
+       << log << "\n";
   delete[] log;
 }
 
-GLuint initshaders(GLenum type, const char *filename) {
+GLuint initshaders(GLenum type, const char *filename)
+{
   // Using GLSL shaders, OpenGL book, page 679
 
   GLuint shader = glCreateShader(type);
@@ -687,25 +735,28 @@ GLuint initshaders(GLenum type, const char *filename) {
   glShaderSource(shader, 1, &cstr2, NULL);
   glCompileShader(shader);
   glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-  if (!compiled) {
+  if (!compiled)
+  {
     shadererrors(shader);
     throw 3;
   }
   return shader;
 }
 
-GLuint initprogram(GLuint vertexshader, GLuint fragmentshader) {
-  	GLuint program = glCreateProgram();
-	GLint linked;
-	glAttachShader(program, vertexshader);
-	glAttachShader(program, fragmentshader);
-	glBindAttribLocation(program, 0, "vertex_modelspace");
-	glBindAttribLocation(program, 1, "normal_modelspace");
-	glLinkProgram(program);
+GLuint initprogram(GLuint vertexshader, GLuint fragmentshader)
+{
+  GLuint program = glCreateProgram();
+  GLint linked;
+  glAttachShader(program, vertexshader);
+  glAttachShader(program, fragmentshader);
+  glBindAttribLocation(program, 0, "vertex_modelspace");
+  glBindAttribLocation(program, 1, "normal_modelspace");
+  glLinkProgram(program);
   glGetProgramiv(program, GL_LINK_STATUS, &linked);
   if (linked)
     glUseProgram(program);
-  else {
+  else
+  {
     programerrors(program);
     throw 4;
   }
