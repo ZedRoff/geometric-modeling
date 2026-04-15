@@ -19,7 +19,7 @@ using namespace std;
 
 #include "myMesh.h"
 #include "myPoint3D.h"
-#include "myVector3D.h"
+#include "myVector3D.h" 
 
 enum MENU {
   MENU_CATMULLCLARK,
@@ -258,56 +258,70 @@ void display() {
     glBindVertexArray(0);
   }
 
-  if (drawsilhouette) {
-    glLineWidth(4.0);
-    color[0] = 1.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;
-    glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
-
-    vector<GLuint> silhouette_edges;
-    for (vector<myHalfedge *>::iterator it = m->halfedges.begin();
-         it != m->halfedges.end(); it++) {
-      /**** TODO: WRITE CODE TO COMPUTE SILHOUETTE ****/
 
 
-      
 
-      myHalfedge *e = (*it);
-      myVertex *v1 = (*it)->source;
-      if ((*it)->twin == NULL)
-        continue;
-      myVertex *v2 = (*it)->twin->source;
 
-      if ( (e->adjacent_face->normal && e->twin->adjacent_face->normal &&
-((camera_eye - *v1->point) * *(e->adjacent_face->normal) < 0) !=
-((camera_eye - *v1->point) * *(e->twin->adjacent_face->normal) < 0))/*ADD THE CONDITION TO CHECK IF THE HALFEDGE DEFINED BY (V1, V2) IS A SILHOUETTE EDGE*/ )
+
+if (drawsilhouette)
+	{
+		glLineWidth(4.0);
+		color[0] = 1.0f, color[1] = 0.0f, color[2] = 0.0f, color[3] = 1.0f;		
+		glUniform4fv(glGetUniformLocation(shaderprogram, "kd"), 1, &color[0]);
+
+		vector <GLuint> silhouette_edges;
+		for (vector<myHalfedge *>::iterator it = m->halfedges.begin(); it != m->halfedges.end(); it++)
+		{
+			myHalfedge *e = (*it);
+			myVertex *v1 = (*it)->source;
+			if ((*it)->twin == NULL) continue;
+			myVertex *v2 = (*it)->twin->source;
+
+			myVector3D direction = camera_eye - (*v1->point + *v2->point) / 2.0;
+
+			double sideA = direction * (*e->adjacent_face->normal);
+			double sideB = direction * (*e->twin->adjacent_face->normal);
+
+			if( sideA < 0 != sideB < 0 )
 			{
-        silhouette_edges.push_back(v1->index);
-        silhouette_edges.push_back(v2->index);
-      }
-    }
+				silhouette_edges.push_back(v1->index);
+				silhouette_edges.push_back(v2->index);
+			}				
+		}
+
+		static GLuint silhouette_vao = 0;
+		if (silhouette_vao == 0)
+			glGenVertexArrays(1, &silhouette_vao);
+		glBindVertexArray(silhouette_vao);
+
+		GLuint silhouette_edges_buffer;
+		glGenBuffers(1, &silhouette_edges_buffer);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges_buffer);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges.size() * sizeof(GLuint),
+			&silhouette_edges[0], GL_STATIC_DRAW);
+
+		glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(0);
+
+		glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERVERTEX]);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glEnableVertexAttribArray(1);
+
+		glDrawElements(GL_LINES, silhouette_edges.size(), GL_UNSIGNED_INT, 0);
+
+		glBindVertexArray(0);
+		glDeleteBuffers(1, &silhouette_edges_buffer);
+ 	}
 
 
 
-    GLuint silhouette_edges_buffer;
-    glGenBuffers(1, &silhouette_edges_buffer);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, silhouette_edges_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 silhouette_edges.size() * sizeof(GLuint), &silhouette_edges[0],
-                 GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_VERTICES]);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[BUFFER_NORMALS_PERVERTEX]);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(1);
 
-    glDrawElements(GL_LINES, silhouette_edges.size(), GL_UNSIGNED_INT, 0);
 
-    glDeleteBuffers(1, &silhouette_edges_buffer);
-  }
 
   if (drawnormals && vaos[VAO_NORMALS]) {
     glLineWidth(1.0);
@@ -394,7 +408,7 @@ void initMesh() {
 
   cout << "Reading mesh from file...\n";
   m = new myMesh();
-  if (m->readFile("hand.obj")) {
+  if (m->readFile("dolphin.obj")) {
     m->computeNormals();
     makeBuffers(m);
   }
@@ -403,7 +417,7 @@ void initMesh() {
 int main(int argc, char *argv[]) {
   initInterface(argc, argv);
 
-  initMesh();
+  initMesh(); 
 
   glutMainLoop();
   return 0;
