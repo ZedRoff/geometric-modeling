@@ -408,14 +408,14 @@ void initMesh() {
 
   cout << "Reading mesh from file...\n";
   m = new myMesh();
-  if (m->readFile("dolphin.obj")) {
+  if (m->readFile("concave_holes.obj")) {
     m->computeNormals();
     makeBuffers(m);
   }
 }
 
 int main(int argc, char *argv[]) {
-  initInterface(argc, argv);
+  initInterface(argc, argv);<
 
   initMesh(); 
 

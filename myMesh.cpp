@@ -212,10 +212,69 @@ void myMesh::simplify() { /**** TODO ****/ }
 
 void myMesh::simplify(myVertex *) { /**** TODO ****/ }
 
-void myMesh::triangulate() { /**** TODO ****/ }
+void myMesh::triangulate() {
+    std::vector<myFace*> facesCopy = faces; 
+    for (myFace* f : facesCopy) {
+        triangulate(f);
+    }
+}
 
 // return false if already triangle, true othewise.
 bool myMesh::triangulate(myFace *f) {
-  /**** TODO ****/
-  return false;
+
+    vector<myVertex*> verts;
+    myHalfedge* start = f->adjacent_halfedge;
+    myHalfedge* he = start;
+
+    do {
+        verts.push_back(he->source);
+        he = he->next;
+    } while (he != start);
+
+    if (verts.size() == 3)
+        return false;
+    myVertex* v0 = verts[0];
+
+    for (size_t i = 1; i < verts.size() - 1; i++) {
+
+        myFace* newFace = new myFace();
+
+        myHalfedge* he0 = new myHalfedge();
+        myHalfedge* he1 = new myHalfedge();
+        myHalfedge* he2 = new myHalfedge();
+
+        // Set sources
+        he0->source = v0;
+        he1->source = verts[i];
+        he2->source = verts[i + 1];
+
+        // Link next/prev
+        he0->next = he1;
+        he1->next = he2;
+        he2->next = he0;
+
+        he0->prev = he2;
+        he1->prev = he0;
+        he2->prev = he1;
+
+        // Set face
+        he0->adjacent_face = newFace;
+        he1->adjacent_face = newFace;
+        he2->adjacent_face = newFace;
+
+        newFace->adjacent_halfedge = he0;
+
+        // Add to mesh
+        halfedges.push_back(he0);
+        halfedges.push_back(he1);
+        halfedges.push_back(he2);
+        faces.push_back(newFace);
+
+        // Set originof if needed
+        if (!v0->originof) v0->originof = he0;
+        if (!verts[i]->originof) verts[i]->originof = he1;
+        if (!verts[i+1]->originof) verts[i+1]->originof = he2;
+    }
+
+    return true;
 }
