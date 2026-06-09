@@ -151,12 +151,18 @@ bool myMesh::readFile(std::string filename) {
   return true;
 }
 
+/*
+  Explication de cette partie : 
+
+  On utilise les deux méthodes computeNormals() développées dans myVertex.cpp et myFace.cpp afin de calculer les normales des faces et des halfEdges
+*/
 void myMesh::computeNormals() { 
-  for (unsigned int i = 0; i < faces.size(); i++)
+  for (int i = 0; i < faces.size(); i++)
     faces[i]->computeNormal();
-  for (unsigned int i = 0; i < vertices.size(); i++)
+  for (int i = 0; i < vertices.size(); i++)
     vertices[i]->computeNormal();
 }
+
 
 void myMesh::normalize() {
   if (vertices.size() < 1)
@@ -216,159 +222,8 @@ void myMesh::simplify(myVertex *) { /**** TODO ****/ }
 
 bool myMesh::triangulate(myFace *f) {
 
-    vector<myVertex*> verts;
-    myHalfedge* start = f->adjacent_halfedge;
-    myHalfedge* he = start;
-
-    do {
-        verts.push_back(he->source);
-        he = he->next;
-    } while (he != start);
-
-    if (verts.size() == 3)
-        return false;
-
-    // Liste d'indices actifs
-    vector<int> V(verts.size());
-    for (int i = 0; i < verts.size(); i++)
-        V[i] = i;
-
-    // --- fonctions utilitaires ---
-    auto cross = [](myVertex* a, myVertex* b, myVertex* c) {
-        return (b->point->X - a->point->X) * (c->point->Y - a->point->Y)
-               - (b->point->Y - a->point->Y) * (c->point->X - a->point->X);
-    };
-
-    auto isConvex = [&](myVertex* a, myVertex* b, myVertex* c) {
-        return cross(a, b, c) > 0; // CCW
-    };
-
-    auto pointInTri = [&](myVertex* p, myVertex* a, myVertex* b, myVertex* c) {
-        double c1 = cross(p, a, b);
-        double c2 = cross(p, b, c);
-        double c3 = cross(p, c, a);
-        return (c1 >= 0 && c2 >= 0 && c3 >= 0) ||
-               (c1 <= 0 && c2 <= 0 && c3 <= 0);
-    };
-
-    // --- ear clipping ---
-    while (V.size() > 3) {
-        bool earFound = false;
-
-        for (size_t i = 0; i < V.size(); i++) {
-
-            int i0 = V[(i + V.size() - 1) % V.size()];
-            int i1 = V[i];
-            int i2 = V[(i + 1) % V.size()];
-
-            myVertex* v0 = verts[i0];
-            myVertex* v1 = verts[i1];
-            myVertex* v2 = verts[i2];
-
-            if (!isConvex(v0, v1, v2))
-                continue;
-
-            bool contains = false;
-            for (int j : V) {
-                if (j == i0 || j == i1 || j == i2)
-                    continue;
-
-                if (pointInTri(verts[j], v0, v1, v2)) {
-                    contains = true;
-                    break;
-                }
-            }
-
-            if (contains)
-                continue;
-
-            // 🎯 EAR TROUVÉ → créer triangle
-            myFace* newFace = new myFace();
-
-            myHalfedge* he0 = new myHalfedge();
-            myHalfedge* he1 = new myHalfedge();
-            myHalfedge* he2 = new myHalfedge();
-
-            he0->source = v0;
-            he1->source = v1;
-            he2->source = v2;
-
-            he0->next = he1;
-            he1->next = he2;
-            he2->next = he0;
-
-            he0->prev = he2;
-            he1->prev = he0;
-            he2->prev = he1;
-
-            he0->adjacent_face = newFace;
-            he1->adjacent_face = newFace;
-            he2->adjacent_face = newFace;
-
-            newFace->adjacent_halfedge = he0;
-
-            halfedges.push_back(he0);
-            halfedges.push_back(he1);
-            halfedges.push_back(he2);
-            faces.push_back(newFace);
-
-            if (!v0->originof) v0->originof = he0;
-            if (!v1->originof) v1->originof = he1;
-            if (!v2->originof) v2->originof = he2;
-
-            // ❌ supprimer l’oreille
-            V.erase(V.begin() + i);
-
-            earFound = true;
-            break;
-        }
-
-        if (!earFound) {
-            // polygone invalide
-            return false;
-        }
-    }
-
-    // 🔺 dernier triangle
-    myFace* newFace = new myFace();
-
-    myHalfedge* he0 = new myHalfedge();
-    myHalfedge* he1 = new myHalfedge();
-    myHalfedge* he2 = new myHalfedge();
-
-    myVertex* v0 = verts[V[0]];
-    myVertex* v1 = verts[V[1]];
-    myVertex* v2 = verts[V[2]];
-
-    he0->source = v0;
-    he1->source = v1;
-    he2->source = v2;
-
-    he0->next = he1;
-    he1->next = he2;
-    he2->next = he0;
-
-    he0->prev = he2;
-    he1->prev = he0;
-    he2->prev = he1;
-
-    he0->adjacent_face = newFace;
-    he1->adjacent_face = newFace;
-    he2->adjacent_face = newFace;
-
-    newFace->adjacent_halfedge = he0;
-
-    halfedges.push_back(he0);
-    halfedges.push_back(he1);
-    halfedges.push_back(he2);
-    faces.push_back(newFace);
-
-    return true;
 }
 
 void myMesh::triangulate() {
-    std::vector<myFace*> facesCopy = faces; 
-    for (myFace* f : facesCopy) {
-        triangulate(f);
-    }
+    
 }
