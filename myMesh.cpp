@@ -218,12 +218,205 @@ void myMesh::simplify() { /**** TODO ****/ }
 
 void myMesh::simplify(myVertex *) { /**** TODO ****/ }
 
+/*
+  Explication de cette partie :
+  Cette fonction utilitaire permet de détermminer si le vertex est dans l'oreille formée par les sommets a, b et c. 
 
+  Pour ce faire, j'ai utilisé la méthode du cours sur les coordonnées barycentrique, qui permet de déterminer si un point est dans un triangle.
+*/
+bool isVertexInsideEar(myVertex *p, myVertex *a, myVertex *b, myVertex *c, myVector3D *N)
+{
+    // Calcul de AB, AC et AP, vecteurs formés par les sommets de l'oreille et le point à tester
+    myVector3D vAB = *(b->point) - *(a->point);
+    myVector3D vAC = *(c->point) - *(a->point);
+    myVector3D vAP = *(p->point) - *(a->point);
 
-bool myMesh::triangulate(myFace *f) {
+    // Calcul de l'aire du triangle ABC (formule du produit vectoriel cf. cours de l'année dernière)
+    myVector3D crossTotal = vAB.crossproduct(vAC);
+    double doubleAreaTotal = crossTotal * (*N);
 
+    // Calcul de u (poids associé au sommet b) 
+    myVector3D crossU = vAP.crossproduct(vAC);
+    double doubleAreaU = crossU * (*N);
+
+    // Calcul de v (poids associé au sommet c) 
+    myVector3D crossV = vAB.crossproduct(vAP);
+    double doubleAreaV = crossV * (*N);
+
+    // Normalisation des aires pour le test 
+    double u = doubleAreaU / doubleAreaTotal;
+    double v = doubleAreaV / doubleAreaTotal;
+
+    return (u >= 0 && v >= 0 && (u + v) <= 1.0);
 }
 
+/*
+  Explication de cette partie : 
+
+  Cette fonction implémente l'algorithme d'Ear Clipping pour la triangulation d'une face. 
+
+  L'idée est de trouver une "oreille" du polygone (un triangle formé par trois sommets consécutifs du polygone, tel que le triangle est entièrement contenu dans le polygone et ne contient aucun autre sommet du polygone), de la couper et de répéter l'opération jusqu'à ce qu'il ne reste plus que des triangles.
+
+  On utilise une liste dynamique des demi-arêtes encore actives dans le polygone (IA), et on vérifie à chaque étape si une oreille est trouvée et peut être coupée. Si aucune oreille n'est trouvée, alors la triangulation échoue.
+*/
+bool myMesh::triangulate(myFace *face)
+{
+    //  On compte le nombre de sommets de la face
+    int vertexCount = 0;
+    myHalfedge *loopPointer = face->adjacent_halfedge;
+    do
+    {
+        vertexCount++;
+        loopPointer = loopPointer->next;
+    } while (loopPointer != face->adjacent_halfedge);
+
+    if (vertexCount <= 3)
+        return false; 
+
+    // On calcule la normale de la face
+    face->computeNormal();
+    myVector3D areaNormal = *(face->normal); 
+
+    if (areaNormal.length() < 1e-10)
+        return false;
+
+    // Liste dynamique des demi-arêtes encore actives dans le polygone
+    std::vector<myHalfedge *> activeHalfedges(vertexCount);
+    loopPointer = face->adjacent_halfedge;
+    for (int i = 0; i < vertexCount; i++)
+    {
+        activeHalfedges[i] = loopPointer;
+        loopPointer = loopPointer->next;
+    }
+
+    int currentIdx = 0;
+
+    // Boucle de Ear Clipping
+    while (activeHalfedges.size() > 3)
+    {
+        bool earClipped = false;
+        int startIdx = currentIdx;
+        do
+        {
+            int size = activeHalfedges.size();
+            // Gestion circulaire propre des voisins via la taille du vecteur (IA)
+            int prevIdx = (currentIdx - 1 + size) % size;
+            int nextIdx = (currentIdx + 1) % size;
+
+            myHalfedge *hePrev = activeHalfedges[prevIdx];
+            myHalfedge *heCurr = activeHalfedges[currentIdx];
+            myHalfedge *heNext = activeHalfedges[nextIdx];
+
+            myVertex *vPrev = hePrev->source;
+            myVertex *vCurr = heCurr->source;
+            myVertex *vNext = heNext->source;
+
+            myVector3D vecU = *(vCurr->point) - *(vPrev->point);
+            myVector3D vecV = *(vNext->point) - *(vCurr->point);
+
+            // On vérifie si on a la convexité
+            if ((vecU.crossproduct(vecV)) * areaNormal > 0)
+            {
+                bool isEarValid = true;
+                
+                // On vérifie si un des autres sommets est dans l'oreille
+                for (int i = 0; i < size; i++)
+                {
+                    if (i == currentIdx || i == prevIdx || i == nextIdx)
+                        continue;
+
+                    if (isVertexInsideEar(activeHalfedges[i]->source, vCurr, vPrev, vNext, &areaNormal))
+                    {
+                        isEarValid = false;
+                        break;
+                    }
+                }
+                
+                if (isEarValid)
+                {
+                    // Création des deux nouvelles demi-arêtes formant la diagonale de l'oreille
+                    myHalfedge *diagonalA = new myHalfedge();
+                    myHalfedge *diagonalB = new myHalfedge();
+
+                    // Attribution des sources et des twins
+                    diagonalA->source = vNext;
+                    diagonalB->source = vPrev;
+
+                    // Création du lien de twins entre les deux demi-arêtes
+                    diagonalA->twin = diagonalB;
+                    diagonalB->twin = diagonalA;
+                    halfedges.push_back(diagonalA);
+                    halfedges.push_back(diagonalB);
+
+                    // Création de la nouvelle face formée par l'oreille
+                    myFace *subFace = new myFace();
+                    faces.push_back(subFace);
+                    subFace->adjacent_halfedge = hePrev;
+
+                    // Connexion des demi-arêtes de l'oreille entre elles et avec la diagonale
+                    hePrev->next = heCurr;
+                    heCurr->next = diagonalA;
+                    diagonalA->next = hePrev;
+                    hePrev->prev = diagonalA;
+                    heCurr->prev = hePrev;
+                    diagonalA->prev = heCurr;
+                  
+                    // Attribution de la face aux demi-arêtes de l'oreille
+                    hePrev->adjacent_face = subFace;
+                    heCurr->adjacent_face = subFace;
+                    diagonalA->adjacent_face = subFace;
+
+                    // Mise à jour de la face d'origine pour le triangle restant
+                    activeHalfedges[prevIdx] = diagonalB;
+
+                    // On supprime l'arête courante (heCurr) du polygone restant (IA)
+                    activeHalfedges.erase(activeHalfedges.begin() + currentIdx);
+
+                    // On réinitialise l'index pour continuer à parcourir le polygone restant (IA)
+                    currentIdx = prevIdx % activeHalfedges.size();
+                    earClipped = true;
+                    break;
+                }
+            }
+
+            currentIdx = (currentIdx + 1) % activeHalfedges.size();
+
+        } while (currentIdx != startIdx);
+        // Si pas d'oreille coupée, alors false
+        if (!earClipped) {
+            return false; 
+        }
+    }
+
+    // Connexion des trois dernières demi-arêtes restantes pour former le dernier triangle
+    myHalfedge *heA = activeHalfedges[0];
+    myHalfedge *heB = activeHalfedges[1];
+    myHalfedge *heC = activeHalfedges[2];
+
+    face->adjacent_halfedge = heA;
+
+    heA->next = heB;
+    heB->next = heC;
+    heC->next = heA;
+
+    heA->prev = heC;
+    heB->prev = heA;
+    heC->prev = heB;
+
+    heA->adjacent_face = face;
+    heB->adjacent_face = face;
+    heC->adjacent_face = face;
+
+    return true;
+}
+
+
+/*
+  Explication de cette partie : 
+  On itère sur toutes les faces du maillage et on applique la fonction de triangulation à chacune d'entre elles.
+*/
 void myMesh::triangulate() {
-    
+    for (unsigned int i = 0; i < faces.size(); i++)
+        triangulate(faces[i]);
+        
 }
