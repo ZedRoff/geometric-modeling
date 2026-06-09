@@ -264,9 +264,13 @@ bool isVertexInsideEar(myVertex *p, myVertex *a, myVertex *b, myVertex *c, myVec
 
   On utilise une liste dynamique des demi-arêtes encore actives dans le polygone (IA), et on vérifie à chaque étape si une oreille est trouvée et peut être coupée. Si aucune oreille n'est trouvée, alors la triangulation échoue.
 */
+
+
+
+
 bool myMesh::triangulate(myFace *face)
 {
-    //  On compte le nombre de sommets de la face
+    // 1. On compte le nombre de sommets de la face
     int vertexCount = 0;
     myHalfedge *loopPointer = face->adjacent_halfedge;
     do
@@ -278,14 +282,9 @@ bool myMesh::triangulate(myFace *face)
     if (vertexCount <= 3)
         return false; 
 
-    // On calcule la normale de la face
-    face->computeNormal();
-    myVector3D areaNormal = *(face->normal); 
+   
 
-    if (areaNormal.length() < 1e-10)
-        return false;
-
-    // Liste dynamique des demi-arêtes encore actives dans le polygone
+    // Liste dynamique des demi-arêtes encore actives dans le polygone (IA)
     std::vector<myHalfedge *> activeHalfedges(vertexCount);
     loopPointer = face->adjacent_halfedge;
     for (int i = 0; i < vertexCount; i++)
@@ -293,6 +292,20 @@ bool myMesh::triangulate(myFace *face)
         activeHalfedges[i] = loopPointer;
         loopPointer = loopPointer->next;
     }
+
+    // méthode de newell explicitée par kyrian dans le chat (les recherches que j'ai réalisé : https://stackoverflow.com/questions/27326636/calculate-normal-vector-of-a-polygon-newells-method)
+    // sans ça, (en utilisant computeNormal de myFace) j'avais des problèmes d'artifacts sur les triangles 
+    myVector3D areaNormal(0, 0, 0);
+    for (int i = 0; i < vertexCount; i++)
+    {
+        myPoint3D *a = activeHalfedges[i]->source->point;
+        myPoint3D *b = activeHalfedges[(i + 1) % vertexCount]->source->point;
+        
+        areaNormal.dX += (a->Y - b->Y) * (a->Z + b->Z);
+        areaNormal.dY += (a->Z - b->Z) * (a->X + b->X);
+        areaNormal.dZ += (a->X - b->X) * (a->Y + b->Y);
+    }
+
 
     int currentIdx = 0;
 
@@ -304,7 +317,7 @@ bool myMesh::triangulate(myFace *face)
         do
         {
             int size = activeHalfedges.size();
-            // Gestion circulaire propre des voisins via la taille du vecteur (IA)
+            // Indices des demi-arêtes précédentes et suivantes dans la liste active (commme dans le readFile) (IA)
             int prevIdx = (currentIdx - 1 + size) % size;
             int nextIdx = (currentIdx + 1) % size;
 
@@ -320,7 +333,7 @@ bool myMesh::triangulate(myFace *face)
             myVector3D vecV = *(vNext->point) - *(vCurr->point);
 
             // On vérifie si on a la convexité
-            if ((vecU.crossproduct(vecV)) * areaNormal > 0)
+            if ((vecU.crossproduct(vecV)) * areaNormal > 1e-10)
             {
                 bool isEarValid = true;
                 
@@ -339,45 +352,56 @@ bool myMesh::triangulate(myFace *face)
                 
                 if (isEarValid)
                 {
-                    // Création des deux nouvelles demi-arêtes formant la diagonale de l'oreille
+                    // Création des deux nouvelles demi-arêtes formant la diagonale
                     myHalfedge *diagonalA = new myHalfedge();
                     myHalfedge *diagonalB = new myHalfedge();
 
-                    // Attribution des sources et des twins
+                    // Connexion des demi-arêtes de la diagonale avec les sommets de l'oreille
                     diagonalA->source = vNext;
                     diagonalB->source = vPrev;
-
-                    // Création du lien de twins entre les deux demi-arêtes
                     diagonalA->twin = diagonalB;
                     diagonalB->twin = diagonalA;
                     halfedges.push_back(diagonalA);
                     halfedges.push_back(diagonalB);
 
-                    // Création de la nouvelle face formée par l'oreille
+                    // Création de la nouvelle face formée par l'oreille (le triangle isolé)
                     myFace *subFace = new myFace();
                     faces.push_back(subFace);
                     subFace->adjacent_halfedge = hePrev;
 
-                    // Connexion des demi-arêtes de l'oreille entre elles et avec la diagonale
+                    // On insère diagonalA entre l'arête qui précédait l'oreille et l'arête de l'oreille
+                    myHalfedge *meshOuterPrev = hePrev->prev;
+                    myHalfedge *meshOuterNext = heNext; 
+
+                    // Mise à jour des connexions pour la nouvelle face
                     hePrev->next = heCurr;
                     heCurr->next = diagonalA;
                     diagonalA->next = hePrev;
+                    
                     hePrev->prev = diagonalA;
                     heCurr->prev = hePrev;
                     diagonalA->prev = heCurr;
                   
-                    // Attribution de la face aux demi-arêtes de l'oreille
                     hePrev->adjacent_face = subFace;
                     heCurr->adjacent_face = subFace;
                     diagonalA->adjacent_face = subFace;
 
-                    // Mise à jour de la face d'origine pour le triangle restant
-                    activeHalfedges[prevIdx] = diagonalB;
+                    // On insère diagonalB entre l'arête qui précédait l'oreille et l'arête qui la suivait
+                    meshOuterPrev->next = diagonalB;
+                    diagonalB->prev = meshOuterPrev;
 
-                    // On supprime l'arête courante (heCurr) du polygone restant (IA)
+                    diagonalB->next = meshOuterNext;
+                    meshOuterNext->prev = diagonalB;
+
+                    // Mise à jour des connexions pour la face originale
+                    diagonalB->adjacent_face = face;
+                    face->adjacent_halfedge = diagonalB;
+
+                    // Mise à jour de notre tableau de suivi
+                    activeHalfedges[prevIdx] = diagonalB;
                     activeHalfedges.erase(activeHalfedges.begin() + currentIdx);
 
-                    // On réinitialise l'index pour continuer à parcourir le polygone restant (IA)
+                    // On réinitialise l'index
                     currentIdx = prevIdx % activeHalfedges.size();
                     earClipped = true;
                     break;
@@ -387,7 +411,7 @@ bool myMesh::triangulate(myFace *face)
             currentIdx = (currentIdx + 1) % activeHalfedges.size();
 
         } while (currentIdx != startIdx);
-        // Si pas d'oreille coupée, alors false
+
         if (!earClipped) {
             return false; 
         }
@@ -414,7 +438,6 @@ bool myMesh::triangulate(myFace *face)
 
     return true;
 }
-
 
 /*
   Explication de cette partie : 
