@@ -316,13 +316,6 @@ if (drawsilhouette)
  	}
 
 
-
-
-
-
-
-
-
   if (drawnormals && vaos[VAO_NORMALS]) {
     glLineWidth(1.0);
     color[0] = 0.2f, color[1] = 0.2f, color[2] = 0.2f, color[3] = 1.0f;
@@ -408,14 +401,14 @@ void initMesh() {
 
   cout << "Reading mesh from file...\n";
   m = new myMesh();
-  if (m->readFile("concave_holes.obj")) {
+  if (m->readFile("cube.obj")) {
     m->computeNormals();
     makeBuffers(m);
   }
 }
 
 int main(int argc, char *argv[]) {
-  initInterface(argc, argv);<
+  initInterface(argc, argv);
 
   initMesh(); 
 

@@ -1,0 +1,3 @@
+/Users/user/geometric-modeling/CMakeFiles/MeshViewer.dir
+/Users/user/geometric-modeling/CMakeFiles/edit_cache.dir
+/Users/user/geometric-modeling/CMakeFiles/rebuild_cache.dir
