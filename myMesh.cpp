@@ -52,6 +52,10 @@ void myMesh::checkMesh() {
     cout << "Each edge has a twin!\n";
 }
 
+/*
+  Explication de cette partie : 
+  Cette fonction lit un fichier .obj et construit le maillage structure halfedges.
+*/
 bool myMesh::readFile(std::string filename) {
   string s, t, u;
   vector<int> faceids;
@@ -69,7 +73,8 @@ bool myMesh::readFile(std::string filename) {
 
   while (getline(fin, s)) {
     stringstream myline(s);
-    myline >> t;
+    if (!(myline >> t)) 
+        continue;
     if (t == "g") {
     } else if (t == "v") {
       float x, y, z;
@@ -94,15 +99,15 @@ bool myMesh::readFile(std::string filename) {
     // créer face
     myFace *f = new myFace();
 
-    //  créer halfedges
+    // créer halfedges
     hedges = new myHalfedge*[faceids.size()];
     for (unsigned int i = 0; i < faceids.size(); i++)
         hedges[i] = new myHalfedge();
 
-    //  connecter face
+    // connecter face
     f->adjacent_halfedge = hedges[0];
 
-    //  boucle principale
+    // boucle principale
     for (unsigned int i = 0; i < faceids.size(); i++) {
         int iplusone = (i + 1) % faceids.size();
         int iminusone = (i - 1 + faceids.size()) % faceids.size();
@@ -122,7 +127,7 @@ bool myMesh::readFile(std::string filename) {
         pair<int,int> twin_edge = make_pair(faceids[iplusone], faceids[i]);
 
         auto it = twin_map.find(twin_edge);
-
+        // twin existe, connexion halfedges
         if (it != twin_map.end()) {
             hedges[i]->twin = it->second;
             it->second->twin = hedges[i];
@@ -130,7 +135,7 @@ bool myMesh::readFile(std::string filename) {
             twin_map[edge] = hedges[i];
         }
 
-        // originof
+        // origine du vertex
         if (!vertices[faceids[i]]->originof)
             vertices[faceids[i]]->originof = hedges[i];
 
