@@ -43,3 +43,52 @@ Les codes générés explicitement par l'ia et intégré brut ont été marqué 
 2. Se placer dans la racine, lancer cmake .
 3. Compiler le projet avec make ./MeshViewer
 4. Le lancer avec ./MeshViewer
+
+## Résultats
+
+Voici les résultats visuels : 
+
+- Catmull clark sur un cube, deux itérations
+
+![alt text](screenshots/catmull_clark_on_cube_2_iter.png)
+
+- computeNormals sur dolphin
+
+![alt text](screenshots/compute_normals_on_dolphin.png)
+
+- Ear clipping sur gear
+
+![alt text](screenshots/ear_clipping_on_gear.png)
+
+- Ear clipping sur c_gear
+
+![alt text](screenshots/ear_clipping_on_c_gear.png)
+
+- Main avec le calcul des normales
+
+![alt text](screenshots/hand_with_normals.png)
+
+- Main sans le calcul des normales
+
+![alt text](screenshots/hand_without_normals.png)
+
+- Silhouette sur dolphin
+
+![alt text](screenshots/silhouette.png)
+
+- Simplify sur cube, 1 itération
+
+![alt text](screenshots/simplify_on_cube_1_iter.png)
+
+- Surface de revolution avec le profil suivant : 
+(profil ia)
+```
+ profile.push_back(myPoint3D(0.00, -0.50, 0.0)); 
+    profile.push_back(myPoint3D(0.20, -0.50, 0.0));  
+    profile.push_back(myPoint3D(0.25, -0.40, 0.0));  
+    profile.push_back(myPoint3D(0.45, -0.10, 0.0));  
+    profile.push_back(myPoint3D(0.35,  0.20, 0.0)); 
+    profile.push_back(myPoint3D(0.15,  0.40, 0.0)); 
+    profile.push_back(myPoint3D(0.22,  0.50, 0.0));  
+```
+![alt text](screenshots/surface_of_revolution.png)
