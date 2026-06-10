@@ -271,7 +271,13 @@ void display() {
 
 
 
+/*
+  Explication de cette partie :
+  Cette partie dessine les silhouettes du maillage.
+  On itère sur toutes les demi-arêtes du maillage
+  Si une edge n'a pas de twin, elle est forcément sur la bordure
 
+*/
 if (drawsilhouette)
 	{
 		glLineWidth(4.0);
@@ -281,15 +287,15 @@ if (drawsilhouette)
 		vector <GLuint> silhouette_edges;
 		for (vector<myHalfedge *>::iterator it = m->halfedges.begin(); it != m->halfedges.end(); it++)
 		{
-			myHalfedge *e = (*it);
+		
 			myVertex *v1 = (*it)->source;
 			if ((*it)->twin == NULL) continue;
 			myVertex *v2 = (*it)->twin->source;
 
 			myVector3D direction = camera_eye - (*v1->point + *v2->point) / 2.0;
 
-			double sideA = direction * (*e->adjacent_face->normal);
-			double sideB = direction * (*e->twin->adjacent_face->normal);
+			double sideA = direction * (*(*it)->adjacent_face->normal);
+			double sideB = direction * (*(*it)->twin->adjacent_face->normal);
 
 			if( sideA < 0 != sideB < 0 )
 			{
