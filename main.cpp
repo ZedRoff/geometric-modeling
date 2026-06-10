@@ -178,6 +178,8 @@ void menu(int item) {
   }
   case MENU_SIMPLIFY: {
     m->simplify();
+     m->computeNormals();
+    makeBuffers(m);
     break;
   }
   case MENU_REVOLUTION:
@@ -416,7 +418,7 @@ void initMesh() {
 
   cout << "Reading mesh from file...\n";
   m = new myMesh();
-  if (m->readFile("gear.obj")) {
+  if (m->readFile("cube.obj")) {
     m->computeNormals();
     makeBuffers(m);
   }

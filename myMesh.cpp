@@ -4,7 +4,8 @@
 #include <map>
 #include <sstream>
 #include <utility>
-
+#include <algorithm>
+#include <unordered_set>
 // #include <GL/glew.h>
 #include "myVector3D.h"
 
@@ -40,16 +41,90 @@ void myMesh::clear() {
   faces.swap(empty_faces);
 }
 
+
+
+bool myMesh::testTwins()
+{
+    for (myHalfedge* h : halfedges) {
+        if (h->twin == nullptr) {
+            return false; 
+        }
+    }
+    return true;
+}
+
+bool myMesh::testFaces() {
+    for (myFace* f : faces) {
+        myHalfedge* h = f->adjacent_halfedge;
+        int count = 0;
+        do {
+            count++;
+            h = h->next;
+        } while (h != f->adjacent_halfedge);
+        
+        if (count < 3) {
+            return false; 
+        }
+    }
+    return true;
+}
+
+bool myMesh::testVertices() {
+    for (myVertex* v : vertices) {
+        if (v->originof == nullptr) {
+            return false; 
+        }
+    }
+    return true;
+}
+
+bool myMesh::testNext() {
+    for (myHalfedge* h : halfedges) {
+        if (h->next == nullptr) {
+            return false; 
+        }
+    }
+    return true;
+}
+
+bool myMesh::testPrev() {
+    for (myHalfedge* h : halfedges) {
+        if (h->prev == nullptr) {
+            return false; 
+        }
+    }
+    return true;
+}
+
 void myMesh::checkMesh() {
-  vector<myHalfedge *>::iterator it;
-  for (it = halfedges.begin(); it != halfedges.end(); it++) {
-    if ((*it)->twin == NULL)
-      break;
-  }
-  if (it != halfedges.end())
-    cout << "Error! Not all edges have their twins!\n";
-  else
-    cout << "Each edge has a twin!\n";
+    if(!testTwins()) {
+        cout << "Certaines halfedges n'ont pas de twins" << endl;
+    } else {
+        cout << "Toutes les halfedges ont des twins" << endl;
+    }
+
+    if(!testFaces()) {
+        cout << "Certaines faces ne sont pas valides" << endl;
+    } else {
+        cout << "Toutes les faces sont valides" << endl;
+    }
+    if(!testVertices()) {
+        cout << "Certains vertices n'ont pas d'originof" << endl;
+    } else {
+        cout << "Tous les vertices ont un originof" << endl;
+    }
+    if(!testNext()) {
+        cout << "Certaines halfedges n'ont pas de next" << endl;
+    } else {
+        cout << "Toutes les halfedges ont un next" << endl;
+    }
+    if(!testPrev()) {
+        cout << "Certaines halfedges n'ont pas de prev" << endl;
+    } else {
+        cout << "Toutes les halfedges ont un prev" << endl;
+    }
+
+
 }
 
 /*
@@ -216,8 +291,13 @@ void myMesh::splitFaceTRIS(myFace *f, myPoint3D *p) { /**** TODO ****/ }
 void myMesh::splitEdge(myHalfedge *e1, myPoint3D *p) { /**** TODO ****/ }
 
 void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p) { /**** TODO ****/ }
+
+
 void myMesh::subdivisionCatmullClark()
-{ /**** TODO ****/ }
+{
+    computeNormals();
+}
+
 
 /*
   Explication de cette partie :
