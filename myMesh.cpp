@@ -218,35 +218,42 @@ void myMesh::splitEdge(myHalfedge *e1, myPoint3D *p) { /**** TODO ****/ }
 void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p) { /**** TODO ****/ }
 void myMesh::subdivisionCatmullClark()
 { /**** TODO ****/ }
-void myMesh::simplify() { /**** TODO ****/ }
 
-void myMesh::simplify(myVertex *) { /**** TODO ****/ }
 
+
+void myMesh::simplify(myVertex *v) {
+    
+}
+
+void myMesh::simplify() {
+    
+
+}
 
 void myMesh::linkHalfedgeTwins()
 {
     // On utilise une map pour stocker les demi-arêtes en fonction de leur orientation (source -> destination)
-    map<pair<myVertex*, myVertex*>, myHalfedge*> edgeMap;
+    map<pair<myVertex*, myVertex*>, myHalfedge*> map;
     vector<myHalfedge*> allHalfedges;
 
     // On parcourt toutes les faces et on stocke leurs demi-arêtes dans la map
     for (myFace *f : faces) {
-        myHalfedge *h0 = f->adjacent_halfedge;
-        myHalfedge *h1 = h0->next;
-        myHalfedge *h2 = h1->next;
-        myHalfedge *h3 = h2->next;
+        myHalfedge *he0 = f->adjacent_halfedge;
+        myHalfedge *he1 = he0->next;
+        myHalfedge *he2 = he1->next;
+        myHalfedge *he3 = he2->next;
 
        // On stocke les demi-arêtes dans une liste pour pouvoir les parcourir ensuite
-        allHalfedges.push_back(h0);
-        allHalfedges.push_back(h1);
-        allHalfedges.push_back(h2);
-        allHalfedges.push_back(h3);
+        allHalfedges.push_back(he0);
+        allHalfedges.push_back(he1);
+        allHalfedges.push_back(he2);
+        allHalfedges.push_back(he3);
 
         // On stocke les demi-arêtes dans la map avec leur orientation
-        edgeMap[make_pair(h0->source, h1->source)] = h0;
-        edgeMap[make_pair(h1->source, h2->source)] = h1;
-        edgeMap[make_pair(h2->source, h3->source)] = h2;
-        edgeMap[make_pair(h3->source, h0->source)] = h3;
+        map[make_pair(he0->source, he1->source)] = he0;
+        map[make_pair(he1->source, he2->source)] = he1;
+        map[make_pair(he2->source, he3->source)] = he2;
+        map[make_pair(he3->source, he0->source)] = he3;
     }
 
     // On parcourt toutes les demi-arêtes et on cherche leur twin dans la map
@@ -255,9 +262,9 @@ void myMesh::linkHalfedgeTwins()
         myVertex *vEnd = h->next->source;
         
         // On cherche la demi-arête opposée (twin) dans la map
-        auto it = edgeMap.find(make_pair(vEnd, vStart));
+        auto it = map.find(make_pair(vEnd, vStart));
         
-        if (it != edgeMap.end()) {
+        if (it != map.end()) {
             h->twin = it->second;
         } else {
             h->twin = nullptr; // Bordure du maillage
@@ -301,9 +308,8 @@ void myMesh::surfaceRevolution()
     // On itère sur les tranches de révolution
     for (int s = 0; s < slices; s++)
     {
-        double angle = (2*M_PI * static_cast<double>(s)) / static_cast<double>(slices);
-        double cosRes = cos(angle);
-        double sinRes = sin(angle);
+        double cosRes = cos((2*M_PI * static_cast<double>(s)) / static_cast<double>(slices));
+        double sinRes = sin((2*M_PI * static_cast<double>(s)) / static_cast<double>(slices));
         // On itère sur les points du profil pour créer les sommets de la tranche
         for (int i = 0; i < profile.size(); i++)
         {
@@ -323,34 +329,38 @@ void myMesh::surfaceRevolution()
     for (int s = 0; s < slices; s++)
     {
         // Indice de la tranche suivante, avec un modulo pour boucler
-        int sn = (s + 1) % slices;
+        int k = (s + 1) % slices;
         // On itère sur les segments du profil pour créer les faces
         for (int i = 0; i < profile.size() - 1; i++)
         {
-          // On récupère les 4 sommets formant la face entre les tranches s et sn, et les segments i et i+1 du profil
+          // On récupère les 4 sommets formant la face entre les tranches s et k, et les segments i et i+1 du profil
             myVertex *v0 = grid[s][i];
-            myVertex *v1 = grid[sn][i];
-            myVertex *v2 = grid[sn][i + 1];
+            myVertex *v1 = grid[k][i];
+            myVertex *v2 = grid[k][i + 1];
             myVertex *v3 = grid[s][i + 1];
 
             // Création de la face et des demi-arêtes
             myFace *f = new myFace();
+            
             myHalfedge *e0 = new myHalfedge();
             myHalfedge *e1 = new myHalfedge();
             myHalfedge *e2 = new myHalfedge();
             myHalfedge *e3 = new myHalfedge();
+
+            // On connecte la face à une de ses demi-arêtes
+            f->adjacent_halfedge = e0;
+
+             // Connexion des demi-arêtes à la face
+            e0->adjacent_face = f;
+            e1->adjacent_face = f;
+            e2->adjacent_face = f;
+            e3->adjacent_face = f;
 
             // Connexion des demi-arêtes à leurs sommets et à la face
             e0->source = v0;
             e1->source = v1;
             e2->source = v2;
             e3->source = v3;
-
-            // Connexion des demi-arêtes à la face
-            e0->adjacent_face = f;
-            e1->adjacent_face = f;
-            e2->adjacent_face = f;
-            e3->adjacent_face = f;
 
             // Chainage next
             e0->next = e1;
@@ -364,14 +374,12 @@ void myMesh::surfaceRevolution()
             e2->prev = e1;
             e3->prev = e2;
 
-            // On assigne une demi-arête d'origine à chaque vertex si elle n'en a pas déjà une
-            if (v0->originof == nullptr) v0->originof = e0;
-            if (v1->originof == nullptr) v1->originof = e1;
-            if (v2->originof == nullptr) v2->originof = e2;
-            if (v3->originof == nullptr) v3->originof = e3;
+            // On assigne une demi-arête d'origine à chaque vertex
+            v0->originof = e0;
+            v1->originof = e1;
+            v2->originof = e2;
+            v3->originof = e3;
 
-            // On connecte la face à une de ses demi-arêtes
-            f->adjacent_halfedge = e0;
             
             // On stocke la face et les demi-arêtes dans le maillage
             faces.push_back(f);
@@ -431,10 +439,6 @@ bool isVertexInsideEar(myVertex *p, myVertex *a, myVertex *b, myVertex *c, myVec
 
   On utilise une liste dynamique des demi-arêtes encore actives dans le polygone (IA), et on vérifie à chaque étape si une oreille est trouvée et peut être coupée. Si aucune oreille n'est trouvée, alors la triangulation échoue.
 */
-
-
-
-
 bool myMesh::triangulate(myFace *face)
 {
     // On compte le nombre de sommets de la face
