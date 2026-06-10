@@ -43,88 +43,81 @@ void myMesh::clear() {
 
 
 
-bool myMesh::testTwins()
-{
-    for (myHalfedge* h : halfedges) {
-        if (h->twin == nullptr) {
-            return false; 
-        }
-    }
-    return true;
-}
 
-bool myMesh::testFaces() {
-    for (myFace* f : faces) {
-        myHalfedge* h = f->adjacent_halfedge;
-        int count = 0;
-        do {
-            count++;
-            h = h->next;
-        } while (h != f->adjacent_halfedge);
-        
-        if (count < 3) {
-            return false; 
-        }
-    }
-    return true;
-}
 
-bool myMesh::testVertices() {
-    for (myVertex* v : vertices) {
-        if (v->originof == nullptr) {
-            return false; 
-        }
-    }
-    return true;
-}
-
-bool myMesh::testNext() {
-    for (myHalfedge* h : halfedges) {
-        if (h->next == nullptr) {
-            return false; 
-        }
-    }
-    return true;
-}
-
-bool myMesh::testPrev() {
-    for (myHalfedge* h : halfedges) {
-        if (h->prev == nullptr) {
-            return false; 
-        }
-    }
-    return true;
-}
 
 void myMesh::checkMesh() {
-    if(!testTwins()) {
-        cout << "Certaines halfedges n'ont pas de twins" << endl;
-    } else {
-        cout << "Toutes les halfedges ont des twins" << endl;
+   
+   cout << "Début tests du cours" << endl;
+    int errors = 0;
+
+    // Tests sur les demi-arêtes
+    for (int i = 0; i < halfedges.size(); i++) {
+        myHalfedge* h = halfedges[i];
+        // On vérifie qu'aucune demi-arête n'est NULL
+        if (h == NULL) {
+            cout << "Erreur : La demi-arete " << i << " est NULL." << endl;
+            errors++;
+            continue;
+        }
+        // On vérifie si chaque demi-arête a une source
+        if (h->source == NULL) {
+            cout << "Erreur : La demi-arete " << i << " n'a pas de sommet source." << endl;
+            errors++;
+        }
+
+        // On vérifie si depuis une arête on peut aller à la suivante
+        if (h->next == NULL) {
+            cout << "Erreur : La demi-arete " << i << " n'a pas de pointeur 'next'." << endl;
+            errors++;
+        // On vérifie que aller à l'arête suivante et revenir en arrière est cohérent
+        } else if (h->next->prev != h) {
+            cout << "Erreur : Le 'next->prev' de la demi-arete " << i << " ne revient pas sur elle-meme." << endl;
+            errors++;
+        }
+
+        // On vérifie si chaque demi-arête a une arête précédente
+        if (h->prev == NULL) {
+            cout << "Erreur : La demi-arete " << i << " n'a pas de pointeur 'prev'." << endl;
+            errors++;
+        // On vérifie si prev est cohérent avec next
+        } else if (h->prev->next != h) {
+            cout << "Erreur : Le 'prev->next' de la demi-arete " << i << " ne revient pas sur elle-meme." << endl;
+            errors++;
+        }
+
+        // On vérifie que chaque demi-arête a un twin
+        if (h->twin == NULL) {
+            cout << "Alerte (Bordure) : La demi-arete " << i << " n'a pas de twin." << endl;
+        } else {
+             // On vérifie si aller au twin, que le twin de ce twin est bien h
+            if (h->twin->twin != h) {
+                cout << "Erreur : Le twin du twin de la demi-arete " << i << " n'est pas elle-meme." << endl;
+                errors++;
+            }
+            // On vérifie que les demi arêtes ne la même source
+            if (h->source == h->twin->source) {
+                cout << "Erreur : La demi-arete " << i << " et son twin ont le meme sommet source." << endl;
+                errors++;
+            }
+        }
+
+        // On vérifie que chaque demi-arête est associée à une face
+        if (h->adjacent_face == NULL) {
+            cout << "Erreur : La demi-arete " << i << " n'est liee a aucune face." << endl;
+            errors++;
+        }
     }
 
-    if(!testFaces()) {
-        cout << "Certaines faces ne sont pas valides" << endl;
-    } else {
-        cout << "Toutes les faces sont valides" << endl;
-    }
-    if(!testVertices()) {
-        cout << "Certains vertices n'ont pas d'originof" << endl;
-    } else {
-        cout << "Tous les vertices ont un originof" << endl;
-    }
-    if(!testNext()) {
-        cout << "Certaines halfedges n'ont pas de next" << endl;
-    } else {
-        cout << "Toutes les halfedges ont un next" << endl;
-    }
-    if(!testPrev()) {
-        cout << "Certaines halfedges n'ont pas de prev" << endl;
-    } else {
-        cout << "Toutes les halfedges ont un prev" << endl;
-    }
 
 
+   
+    if (errors == 0) {
+        cout << "Fin des tests, tout est valide" << endl;
+    } else {
+        cout << "Fin des tests, " << errors << " erreurs detectees." << endl;
+    }
+    cout << "------------------------------------------------" << endl;
 }
 
 /*

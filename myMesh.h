@@ -31,11 +31,7 @@ public:
 	void simplify(myVertex *);
 void collapseEdge(myHalfedge* e);
 	void clear();
-	bool testTwins();
-	bool testFaces();
-	bool testVertices();
-	bool testNext();
-	bool testPrev();
+	
 	myMesh(void);
 	~myMesh(void);
 };
