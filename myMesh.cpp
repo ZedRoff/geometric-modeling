@@ -88,7 +88,7 @@ void myMesh::checkMesh() {
 
         // On vérifie que chaque demi-arête a un twin
         if (h->twin == NULL) {
-            cout << "Alerte (Bordure) : La demi-arete " << i << " n'a pas de twin." << endl;
+            cout << " La demi-arete " << i << " est une frontière." << endl;
         } else {
              // On vérifie si aller au twin, que le twin de ce twin est bien h
             if (h->twin->twin != h) {
@@ -288,7 +288,193 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p) { /**** TODO ****/ }
 
 void myMesh::subdivisionCatmullClark()
 {
+  
+    // Variables de comptage des éléments du maillage
+    int total_V = (int)vertices.size();
+    int total_F = (int)faces.size();
+    int total_H = (int)halfedges.size();
+
+   // On attribue un index à chaque élément pour faciliter les références
+    for (int i = 0; i < total_V; i++) vertices[i]->index = i;
+    for (int i = 0; i < total_F; i++) faces[i]->index = i;
+    for (int i = 0; i < total_H; i++) halfedges[i]->index = -1;
+
+    // Calculer le centre de chaque face
+    vector<myPoint3D> faceCentroids(total_F);
+    for (int i = 0; i < total_F; i++) {
+        myHalfedge* h = faces[i]->adjacent_halfedge;
+        int cnt = 0;
+
+        // On fait le tour de la face pour sommer les sommets
+        do {
+            faceCentroids[i] += *(h->source->point);
+            cnt++;
+            h = h->next;
+        } while (h != faces[i]->adjacent_halfedge);
+
+        // On divise par le nombre de sommets
+        faceCentroids[i] /= (double)cnt;
+    }
+
+    // Calculer le centre de chaque arête
+    vector<myPoint3D> edgeCentroids;
+    vector<int> edge_indices(total_H);
+    int total_E = 0;
+
+    for (int i = 0; i < total_H; i++) {
+        myHalfedge* h = halfedges[i];
+        // Si l'arête est déjà traitée
+        if (h->index != -1) {
+            edge_indices[i] = h->index;
+            continue;
+        }
+
+        // Formule de Catmull-Clark pour l'arête (p1 + p2 + f1 + f2) / 4 (IA)
+        myPoint3D ep;
+        ep += *(h->source->point);
+        ep += *(h->twin->source->point);
+        ep += faceCentroids[h->adjacent_face->index];
+        ep += faceCentroids[h->twin->adjacent_face->index];
+        ep /= 4.0;
+
+        // On stocke le centre de l'arête et on lui attribue un index
+        edgeCentroids.push_back(ep);
+        h->index = total_E;
+        h->twin->index = total_E;
+        edge_indices[i] = total_E;
+        total_E++;
+    }
+
+    // On réattribue un index à chaque demi-arête pour les futures références
+    for (int i = 0; i < total_H; i++) halfedges[i]->index = i;
+
+    
+    vector<myPoint3D> smoothPositions(total_V);
+    for (int i = 0; i < total_V; i++) {
+        myVertex* v = vertices[i];
+        myHalfedge* h = v->originof;
+        myPoint3D Q, R;
+        int n = 0;
+        // On fait le tour de tous les voisins de v pour calculer Q et R
+        do {
+            Q += faceCentroids[h->adjacent_face->index];
+            
+            myPoint3D mid = *(h->source->point);
+            mid += *(h->twin->source->point);
+            mid /= 2.0;
+            R += mid;
+            
+            n++;
+            h = h->twin->next;
+        } while (h != v->originof);
+        // On divise par n pour obtenir les moyennes
+        Q /= (double)n;
+        R /= (double)n;
+        myPoint3D S = *(v->point);
+        
+        // Formule de lissage globale : (Q + 2R + (n-3)S) / n (IA)
+        smoothPositions[i] = (Q + R * 2.0 + S * (double)(n - 3)) / (double)n;
+    }
+
+    // On crée les nouveaux sommets pour les centres de faces et d'arêtes, et on met à jour les positions des sommets existants
+    vector<myVertex*> faceVertices(total_F), edgeVertices(total_E);
+    for (int i = 0; i < total_F; i++) {
+        faceVertices[i] = new myVertex();
+        faceVertices[i]->point = new myPoint3D(faceCentroids[i].X, faceCentroids[i].Y, faceCentroids[i].Z);
+    }
+    for (int i = 0; i < total_E; i++) {
+        edgeVertices[i] = new myVertex();
+        edgeVertices[i]->point = new myPoint3D(edgeCentroids[i].X, edgeCentroids[i].Y, edgeCentroids[i].Z);
+    }
+    
+    // Application directe des nouvelles coordonnées sur les sommets actuels
+    for (int i = 0; i < total_V; i++) {
+        vertices[i]->point->X = smoothPositions[i].X;
+        vertices[i]->point->Y = smoothPositions[i].Y;
+        vertices[i]->point->Z = smoothPositions[i].Z;
+    }
+
+    // Construction de la nouvelle topologie du maillage
+    vector<myHalfedge*> sub_HE_a(total_H), sub_HE_b(total_H), sub_HE_c(total_H), sub_HE_d(total_H);
+    vector<myFace*> sub_Faces;
+    vector<myHalfedge*> sub_Halfedges;
+
+    for (int i = 0; i < total_H; i++) {
+        myHalfedge* h = halfedges[i];
+        int fi = h->adjacent_face->index;
+        int ei = edge_indices[i];
+        int prev_idx = h->prev->index; 
+        int ei_prev = edge_indices[prev_idx];
+
+        myHalfedge* he_a = new myHalfedge();
+        myHalfedge* he_b = new myHalfedge();
+        myHalfedge* he_c = new myHalfedge();
+        myHalfedge* he_d = new myHalfedge();
+
+        he_a->source = h->source;
+        he_b->source = edgeVertices[ei];
+        he_c->source = faceVertices[fi];
+        he_d->source = edgeVertices[ei_prev];
+
+        // On connecte les 4 arêtes pour fermer la sous-face carrée
+        he_a->next = he_b; he_b->prev = he_a;
+        he_b->next = he_c; he_c->prev = he_b;
+        he_c->next = he_d; he_d->prev = he_c;
+        he_d->next = he_a; he_a->prev = he_d;
+
+        myFace* newF = new myFace();
+        newF->adjacent_halfedge = he_a;
+        he_a->adjacent_face = newF;
+        he_b->adjacent_face = newF;
+        he_c->adjacent_face = newF;
+        he_d->adjacent_face = newF;
+
+        sub_HE_a[i] = he_a;
+        sub_HE_b[i] = he_b;
+        sub_HE_c[i] = he_c;
+        sub_HE_d[i] = he_d;
+
+        sub_Faces.push_back(newF);
+        sub_Halfedges.push_back(he_a);
+        sub_Halfedges.push_back(he_b);
+        sub_Halfedges.push_back(he_c);
+        sub_Halfedges.push_back(he_d);
+
+        h->source->originof = he_a;
+        edgeVertices[ei]->originof = he_b;
+        faceVertices[fi]->originof = he_c;
+        edgeVertices[ei_prev]->originof = he_d;
+    }
+
+   // Couture finale des demi-arêtes pour connecter les sous-faces entre elles
+    for (int i = 0; i < total_H; i++) {
+        myHalfedge* h = halfedges[i];
+        
+        int j_next = h->next->index;
+        sub_HE_b[i]->twin = sub_HE_c[j_next];
+        sub_HE_c[j_next]->twin = sub_HE_b[i];
+
+        int j_tn = h->twin->next->index;
+        sub_HE_a[i]->twin = sub_HE_d[j_tn];
+        sub_HE_d[j_tn]->twin = sub_HE_a[i];
+    }
+
+    // Suppression de l'ancienne topologie 
+    for (int i = 0; i < (int)halfedges.size(); i++) delete halfedges[i];
+    for (int i = 0; i < (int)faces.size(); i++) delete faces[i];
+
+    // Injection des nouveaux points créés dans la liste globale du maillage actuel
+    for (int i = 0; i < total_F; i++) vertices.push_back(faceVertices[i]);
+    for (int i = 0; i < total_E; i++) vertices.push_back(edgeVertices[i]);
+
+    // Remplacement final des collections du maillage
+    halfedges = sub_Halfedges;
+    faces = sub_Faces;
+
+    // Recalcul des normales pour l'affichage à l'écran
     computeNormals();
+
+    checkMesh();
 }
 
 
@@ -347,6 +533,7 @@ void myMesh::simplify()
     }
 
     computeNormals();
+    checkMesh();
 }
 
 /*
@@ -601,6 +788,8 @@ void myMesh::surfaceRevolution()
 
     // On calcule les normales pour un rendu correct
     computeNormals();
+
+    checkMesh();
 }
 
 
@@ -682,7 +871,6 @@ bool myMesh::triangulate(myFace *face)
         areaNormal.dY += (a->Z - b->Z) * (a->X + b->X);
         areaNormal.dZ += (a->X - b->X) * (a->Y + b->Y);
     }
-
 
     int currentIdx = 0;
 
@@ -823,5 +1011,7 @@ bool myMesh::triangulate(myFace *face)
 void myMesh::triangulate() {
     for (unsigned int i = 0; i < faces.size(); i++)
         triangulate(faces[i]);
+    
+    checkMesh();
         
 }
