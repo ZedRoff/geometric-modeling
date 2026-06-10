@@ -48,7 +48,8 @@ enum MENU {
   MENU_WRITE,
   MENU_SIMPLIFY,
   MENU_DRAWNORMALS,
-  MENU_OPENFILE
+  MENU_OPENFILE,
+  MENU_REVOLUTION
 };
 
 myMesh *m;
@@ -177,6 +178,14 @@ void menu(int item) {
   }
   case MENU_SIMPLIFY: {
     m->simplify();
+    break;
+  }
+  case MENU_REVOLUTION:
+  {
+    
+    m->surfaceRevolution();
+		m->computeNormals();
+		makeBuffers(m);
     break;
   }
   }

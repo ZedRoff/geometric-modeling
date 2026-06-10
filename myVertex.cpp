@@ -21,23 +21,31 @@ myVertex::~myVertex(void) {
   Pour ce faire, on utilise l'algorithme du cours qui permet de naviguer autour d'un vertex.
 */
 void myVertex::computeNormal() { 
-  // Demi-arête dee départ que l'on souhaite considéré
-  myHalfedge *h = originof;
+  // Si le sommet n'a pas d'arête de départ, on ne fait rien
+  if (!originof) return;
 
-  // Vecteur normal (on réinitialise ses composantes)
+  myHalfedge *h = originof;
   normal->dX = 0.0;
   normal->dY = 0.0;
   normal->dZ = 0.0;
 
-  // Algorithme du cours 
+  // Algorithme du cours pour naviguer autour du vertex
   do {
-    // On additionne le vecteur trouvé, adjaçant au point
-    normal->dX += h->adjacent_face->normal->dX;
-    normal->dY += h->adjacent_face->normal->dY;
-    normal->dZ += h->adjacent_face->normal->dZ;
-    h = h->twin->next;
-  } while (h != originof);
+    if (h->adjacent_face && h->adjacent_face->normal) {
+      normal->dX += h->adjacent_face->normal->dX;
+      normal->dY += h->adjacent_face->normal->dY;
+      normal->dZ += h->adjacent_face->normal->dZ;
+    }
 
-  // On normalise le vecteur
+    // détection bord ouvert
+    if (h->twin != nullptr) {
+      h = h->twin->next;
+    } else {
+    
+      break; 
+    }
+
+  } while (h != originof && h != nullptr);
+
   normal->normalize();
 }

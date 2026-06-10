@@ -21,10 +21,10 @@ public:
 	void subdivisionCatmullClark();
 
 	void splitFaceTRIS(myFace *, myPoint3D *);
-
+	void linkHalfedgeTwins();
 	void splitEdge(myHalfedge *, myPoint3D *);
 	void splitFaceQUADS(myFace *, myPoint3D *);
-
+	void surfaceRevolution();
 	void triangulate();
 	bool triangulate(myFace *);
 	void simplify();
