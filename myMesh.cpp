@@ -219,16 +219,149 @@ void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p) { /**** TODO ****/ }
 void myMesh::subdivisionCatmullClark()
 { /**** TODO ****/ }
 
+/*
+  Explication de cette partie :
+  Cette fonction implémente la simplification du maillage par collapse d'arêtes.
+  On cherche l'arête la plus courte du maillage, et on fusionne deux sommets de cette arête situé au milieu
 
+*/
+void myMesh::simplify()
+{
+    if (vertices.size() == 0 || halfedges.size() == 0) return;
 
-void myMesh::simplify(myVertex *v) {
-    
+    int gap_limit = vertices.size() * 0.30;
+    int items_removed = 0;
+
+    // Boucle de suppression
+    while (items_removed < gap_limit && vertices.size() > 4) {
+        
+        myHalfedge* target_edge = NULL;
+        double current_min_dist = std::numeric_limits<double>::max();
+
+        // Boucle pour trouver l'arête la plus courte
+        for (int idx = 0; idx < halfedges.size(); idx++) {
+            myHalfedge* current_edge = halfedges[idx];
+            
+            // Si on est sur une arête de frontière
+            if (current_edge == NULL || current_edge->source == NULL || 
+                current_edge->twin == NULL || current_edge->twin->source == NULL) {
+                continue;
+            }
+
+            // On calcule la longueur de l'arête
+            myPoint3D* start_node = current_edge->source->point;
+            myPoint3D* end_node = current_edge->twin->source->point;
+
+            double x_offset = end_node->X - start_node->X;
+            double y_offset = end_node->Y - start_node->Y;
+            double z_offset = end_node->Z - start_node->Z;
+            double edge_len = sqrt(x_offset * x_offset + y_offset * y_offset + z_offset * z_offset);
+
+            // Si la longueur est plus courte que le minimum local
+            if (edge_len < current_min_dist) {
+                current_min_dist = edge_len;
+                target_edge = current_edge;
+            }
+        }
+
+        // Si on a trouvé une arête, on l'écrase
+        if (target_edge != NULL) {
+            collapseEdge(target_edge);
+            items_removed = items_removed + 1;
+        } else {
+            break; 
+        }
+    }
+
+    computeNormals();
 }
 
-void myMesh::simplify() {
-    
+/*
+  Explication de cette partie : 
 
+  Cette fonction implémente la notion du cours de collapse d'arête, fusionnant deux sommets et supprimant les faces dégénérées résultantes.
+  On commence par trouver les éléments liés à l'arête à supprimer : les deux faces adjacentes, les deux sommets de l'arête, et les deux sommets opposés à l'arête dans les faces adjacentes.
+  On calcule ensuite le milieu de l'arête et on déplace le sommet pivot vers ce milieu.
+  Ensuite, on recoud les demi-arêtes pour fusionner les deux sommets, et on nettoie les données obsolètes (sommet supprimé, faces dégénérées, demi-arêtes supprimées).
+*/
+void myMesh::collapseEdge(myHalfedge* e)
+{
+    if (e == NULL) return;
+
+    myHalfedge* e_opposite = e->twin;
+    if (e_opposite == NULL) return; 
+
+    myFace* target_face_1 = e->adjacent_face;
+    myFace* target_face_2 = e_opposite->adjacent_face;
+
+    myHalfedge* side_a1 = e->next;
+    myHalfedge* side_b1 = e->next->next;
+    myHalfedge* side_a2 = e_opposite->next;
+    myHalfedge* side_b2 = e_opposite->next->next;
+
+    myVertex* pivot_vertex = e->source;
+    myVertex* delete_vertex = e_opposite->source;
+    myVertex* apex_vertex_1 = side_b1->source;
+    myVertex* apex_vertex_2 = side_b2->source;
+
+    // Calcul du milieu de l'arête
+    double calculated_x = (pivot_vertex->point->X + delete_vertex->point->X) / 2.0;
+    double calculated_y = (pivot_vertex->point->Y + delete_vertex->point->Y) / 2.0;
+    double calculated_z = (pivot_vertex->point->Z + delete_vertex->point->Z) / 2.0;
+
+    // On déplace le sommet vers ce milieu
+    pivot_vertex->point = new myPoint3D(calculated_x, calculated_y, calculated_z);
+
+    // Recouture pour fusionner v2 dans v1
+    for (int idx = 0; idx < halfedges.size(); idx++) {
+        if (halfedges[idx]->source == delete_vertex) {
+            halfedges[idx]->source = pivot_vertex;
+        }
+    }
+
+    // Recouture des twins
+    side_b1->twin->twin = side_a1->twin;
+    side_a1->twin->twin = side_b1->twin;
+    side_b2->twin->twin = side_a2->twin;
+    side_a2->twin->twin = side_b2->twin;
+
+    // Reset des originof
+    pivot_vertex->originof = side_a2->twin;
+    apex_vertex_1->originof  = side_a1->twin;
+    apex_vertex_2->originof  = side_b1->twin;
+
+    // Netoyage des données obsolètes 
+    for (int idx = vertices.size() - 1; idx >= 0; idx--) {
+        if (vertices[idx] == delete_vertex) {
+            delete vertices[idx]->point;
+            delete vertices[idx];
+            vertices.erase(vertices.begin() + idx);
+        }
+    }
+
+    for (int idx = faces.size() - 1; idx >= 0; idx--) {
+        if (faces[idx] == target_face_1 || faces[idx] == target_face_2) {
+            delete faces[idx];
+            faces.erase(faces.begin() + idx);
+        }
+    }
+
+    for (int idx = halfedges.size() - 1; idx >= 0; idx--) {
+        myHalfedge* current_h = halfedges[idx];
+        if (current_h == e || current_h == e_opposite || 
+            current_h == side_a1 || current_h == side_a2 || 
+            current_h == side_b1 || current_h == side_b2) {
+            delete current_h;
+            halfedges.erase(halfedges.begin() + idx);
+        }
+    }
 }
+
+void myMesh::simplify(myVertex *v)
+{
+ 
+}
+
 
 void myMesh::linkHalfedgeTwins()
 {

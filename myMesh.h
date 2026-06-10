@@ -29,7 +29,7 @@ public:
 	bool triangulate(myFace *);
 	void simplify();
 	void simplify(myVertex *);
-
+void collapseEdge(myHalfedge* e);
 	void clear();
 
 	myMesh(void);
