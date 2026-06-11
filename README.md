@@ -78,6 +78,14 @@ Cette dernière est appelée à chaque fin d'opération géométrique, afin de s
 
 7. [x] catmull-clark : implémentation de la méthode catmull-clark qui consiste à diviser les faces en quadrangles en cherchant le centre d'arêtes et de faces, puis lisser les points existants
 
+- On calcule le centre géométrique de chaque face existante en faisant la moyenne de ses sommets
+- On calcule un nouveau point au milieu de chaque arête en combinant ses sommets et le centre des faces adjacentes
+- On applique un lissage mathématique sur la position des anciens sommets en les déplaçant légèrement vers leurs voisins
+- On convertit tous ces centres (faces et arêtes) en de tout nouveaux sommets physiques ajoutés au maillage
+- On découpe chaque ancienne face en plusieurs sous-faces à quatre côtés  en reliant les nouveaux points entre eux
+- On recrée entièrement les demi-arêtes pour ces petits carrés et on les chaîne en boucle fermée
+- On réalise la couture finale en reliant les demi-arêtes jumelles des carrés voisins pour unifier la surface
+- On supprime l'ancienne structure géométrique et on met à jour les listes globales du modèle
 
 
 ## Usage de l'IA
@@ -87,7 +95,7 @@ Gemini a été utilisé lors de la réalisation des TPs afin de :
 - Quand il y avait un plantage, j'ai demandé à l'IA de m'aider à résoudre, je me suis bien assuré de comprendre les attendus afin d'adapter le code à nos datastructures
 - Pour les libérations de mémoires et le fait de supprimer les faces/points/demi-arêtes nécessaires afin de gérer la cohérence
 
-Les codes générés explicitement par l'ia et intégré brut ont été marqué d'une balise (IA), certains ont pu être oublié mais globalement, computeNormals, silhouette, checkMesh, readFile ont été réalisé avec quasiment pas d'IA. En revanche, triangulate, simplify et catmull-clark ont été réalisé avec la méthode pseudo code -> code -> aide IA. surfaceRevolution fonctionnait quasiment complétement, mais ne générait pas le résultat esconté et des problèmes de mémoires sont survenus.
+Les codes générés explicitement par l'ia et intégré brut ont été marqué d'une balise (IA), certains ont pu être oublié mais globalement, computeNormals, silhouette, checkMesh, readFile ont été réalisé avec quasiment pas d'IA (seulement pour la détection de bugs). En revanche, triangulate, simplify et catmull-clark ont été réalisé avec la méthode pseudo code -> code -> aide IA. surfaceRevolution fonctionnait quasiment complétement, mais ne générait pas le résultat esconté et des problèmes de mémoires sont survenus.
 
 Pour le debug, j'ai utilisé lldb afin de comprendre quelle ligne était fautive (de ce fait, j'ai compris que mes implémentations de readFile et computeNormals étaient parfois faussée). 
 
@@ -103,10 +111,11 @@ thread backtrace
 
 Le code a été commenté afin d'expliquer ce qui a été réalisé, au dessus de chaque fonction développée une section "Ce qui a été fait" est disponible à la lecture.
 
-Un bouton "Surface of Revolution" est disponible dans le menu
+Un bouton "Surface of Revolution" est disponible dans le menu, il dessine un vase
 
 Les TPs ont été réalisé avec un mac intel, des adaptations par rapport au squelette de base ont dû être réalisées notammene tdans le fichier CMakeLists.txt
 
+L'ensemble des captures d'écrans sont disponibles dans le dossier screenshots
 
 ## Compilation du projet
 
