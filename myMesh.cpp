@@ -279,7 +279,19 @@ void myMesh::splitEdge(myHalfedge *e1, myPoint3D *p) { /**** TODO ****/ }
 
 void myMesh::splitFaceQUADS(myFace *f, myPoint3D *p) { /**** TODO ****/ }
 
+/*
+  Explication de cette partie : 
 
+  L'idée est de diviser chaque face d'origine en plusieurs sous-faces à quatre côtés en injectant de nouveaux sommets.
+
+  Les étapes sont les suivantes :
+  - On calcule le centre géométrique de chaque face existante en faisant la moyenne de ses sommets
+  - On calcule un nouveau point au milieu de chaque arête en combinant ses sommets et le centre des faces adjacentes
+  - On applique un lissage mathématique sur la position des anciens sommets en les déplaçant légèrement vers leurs voisins
+  - On convertit tous ces centres (faces et arêtes) en de tout nouveaux sommets physiques ajoutés au maillage
+  - On découpe chaque ancienne face en plusieurs sous-faces à quatre côtés en reliant les nouveaux points entre eux
+  - On recrée entièrement les demi-arêtes pour ces petits carrés et on les chaîne en boucle fermée
+*/
 void myMesh::subdivisionCatmullClark()
 {
   
@@ -288,7 +300,7 @@ void myMesh::subdivisionCatmullClark()
     int total_F = (int)faces.size();
     int total_H = (int)halfedges.size();
 
-   // On attribue un index à chaque élément pour faciliter les références
+   // On attribue un index à chaque élément pour faciliter les références (IA)
     for (int i = 0; i < total_V; i++) vertices[i]->index = i;
     for (int i = 0; i < total_F; i++) faces[i]->index = i;
     for (int i = 0; i < total_H; i++) halfedges[i]->index = -1;
@@ -388,7 +400,7 @@ void myMesh::subdivisionCatmullClark()
         vertices[i]->point->Z = smoothPositions[i].Z;
     }
 
-    // Construction de la nouvelle topologie du maillage
+    // Construction de la nouvelle topologie du maillage (IA + moi)
     vector<myHalfedge*> sub_HE_a(total_H), sub_HE_b(total_H), sub_HE_c(total_H), sub_HE_d(total_H);
     vector<myFace*> sub_Faces;
     vector<myHalfedge*> sub_Halfedges;
@@ -446,14 +458,14 @@ void myMesh::subdivisionCatmullClark()
         
         int j_next = h->next->index;
         sub_HE_b[i]->twin = sub_HE_c[j_next];
-        sub_HE_c[j_next]->twin = sub_HE_b[i];
+        sub_HE_c[j_next]->twin = sub_HE_b[i]; // IA, j'ai oublié de fermé cela
 
         int j_tn = h->twin->next->index;
         sub_HE_a[i]->twin = sub_HE_d[j_tn];
-        sub_HE_d[j_tn]->twin = sub_HE_a[i];
+        sub_HE_d[j_tn]->twin = sub_HE_a[i]; // IA, j'ai oublié de fermé cela
     }
 
-    // Suppression de l'ancienne topologie 
+    // Suppression de l'ancienne topologie  (fuite de mémoire corrigée par IA)
     for (int i = 0; i < (int)halfedges.size(); i++) delete halfedges[i];
     for (int i = 0; i < (int)faces.size(); i++) delete faces[i];
 
@@ -465,7 +477,6 @@ void myMesh::subdivisionCatmullClark()
     halfedges = sub_Halfedges;
     faces = sub_Faces;
 
-    // Recalcul des normales pour l'affichage à l'écran
     computeNormals();
 
     checkMesh();
@@ -473,10 +484,16 @@ void myMesh::subdivisionCatmullClark()
 
 
 /*
-  Explication de cette partie :
-  Cette fonction implémente la simplification du maillage par collapse d'arêtes.
-  On cherche l'arête la plus courte du maillage, et on fusionne deux sommets de cette arête situé au milieu
+  Explication de cette partie : 
 
+  L'idée est d'éliminer les détails les plus petits en priorité pour conserver la forme globale.
+
+  Les étapes sont les suivantes :
+  - On définit un quota de réduction fixé à 30% du nombre de sommets
+  - On calcule la longueur géométrique de toutes les arêtes du maillage
+  - On cherche l'arête la plus courte qui ne se trouve pas sur une bordure ouverte
+  - On fusionne ses deux sommets en un seul point situé pile au milieu (edge collapse)
+  - On répète cette fusion en boucle jusqu'à atteindre le quota fixé
 */
 void myMesh::simplify()
 {
