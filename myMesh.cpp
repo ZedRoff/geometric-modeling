@@ -43,9 +43,6 @@ void myMesh::clear() {
 
 
 
-
-
-
 void myMesh::checkMesh() {
    
    cout << "Début tests du cours" << endl;
@@ -109,9 +106,6 @@ void myMesh::checkMesh() {
         }
     }
 
-
-
-   
     if (errors == 0) {
         cout << "Fin des tests, tout est valide" << endl;
     } else {
